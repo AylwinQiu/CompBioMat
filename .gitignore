@@ -1,0 +1,52 @@
+# macOS Finder and filesystem metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon\r
+._*
+
+# Python bytecode, caches, test/lint/type-check artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# Python environments and packaging/build output
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs and local environment files
+*.log
+.env
+.env.*
+!.env.example
+
+# Pixi environments (keep shared configuration tracked)
+.pixi/*
+!.pixi/config.toml
