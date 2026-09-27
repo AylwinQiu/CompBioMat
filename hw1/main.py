@@ -1,3 +1,4 @@
+from pygments.lexers.boa import BoaLexer
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -51,7 +52,7 @@ def lennard_jones_fluid(
         a_hist = np.concatenate([a_hist, f_func(r_hist[[-1], :], v_hist[[-1], :])/m], axis=0)
         v_hist = np.concatenate([v_hist, v_hist[[-1], :] + 0.5*(a_hist[[-2], :] +a_hist[[-1], :])*dt], axis=0)
         return (r_hist, v_hist, a_hist)
-    def oabab(r_hist, v_hist, a_hist, gamma=1.0):
+    def baoab(r_hist, v_hist, a_hist, gamma=1.0):
         r_old = r_hist[-1, :]
         v_old = v_hist[-1, :]
         a_old = a_hist[-1, :]
@@ -69,7 +70,7 @@ def lennard_jones_fluid(
         # A
         r_new = r_050 + v_075 * dt/2
         # B
-        a_new = force_lj(r_new[1, :])[0]/m
+        a_new = force_lj(r_new[None, :, :])[0]/m
         v_new = v_075 + a_new*dt/2
         r_hist = np.concatenate([r_hist, np.expand_dims(r_new, 0)], axis=0)
         a_hist = np.concatenate([a_hist, np.expand_dims(a_new, 0)],axis=0)
@@ -120,7 +121,8 @@ def lennard_jones_fluid(
         E_kin = []
         E_tot = []
         for step in range(10000):
-            s = (r_hist, v_hist, a_hist) = velocity_verlet(r_hist, v_hist, a_hist, langevin_thermostat)
+            s = (r_hist, v_hist, a_hist) =baoab(r_hist, v_hist, a_hist)
+            # velocity_verlet(r_hist, v_hist, a_hist, langevin_thermostat)
             if step%1==0:
                 epot=u_mat_avery(get_norm2_mat(r_hist[-1, :]))
                 ekin=e_kin_avery(v_hist[-1, :])
