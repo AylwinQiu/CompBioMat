@@ -5,8 +5,8 @@ from matplotlib.animation import FuncAnimation
 
 def lennard_jones_fluid(
         task:str = "test", 
-        T_star:float=0.05,
-        rho_star:float=0.5,
+        T_star:float=0.1,
+        rho_star:float=0.2,
         num_particle:int=50, 
         sigma:float=10.0, 
         epsilon:float=1.0, 
@@ -27,9 +27,18 @@ def lennard_jones_fluid(
         r = np.column_stack((xx.ravel(), yy.ravel()))
         return r[:num_particle]
     def init_r_array_by_rho_star(rho_star:float):
+        """Set the 2-D box size from reduced density and return a lattice.
 
-        # TODO
-        pass
+        For this two-dimensional simulation, ``rho_star = N * sigma**2 /
+        box_size**2``.  Updating ``box_size`` here also makes the later
+        periodic-boundary and force calculations use the requested density.
+        """
+        nonlocal box_size
+        if not np.isfinite(rho_star) or rho_star <= 0:
+            raise ValueError("rho_star must be a positive finite number")
+
+        box_size = sigma * np.sqrt(num_particle / rho_star)
+        return init_r_array()
     def init_v_array_by_t_star(t_star:float):
         kBT = t_star*epsilon
         tmp = np.random.rand(num_particle)*2*np.pi
@@ -41,6 +50,30 @@ def lennard_jones_fluid(
         r_hist = np.concatenate([r_hist, r_hist[[-1], :]+v_hist[[-1], :]*dt + 0.5*a_hist[[-1], :]*dt**2], axis=0)
         a_hist = np.concatenate([a_hist, f_func(r_hist[[-1], :], v_hist[[-1], :])/m], axis=0)
         v_hist = np.concatenate([v_hist, v_hist[[-1], :] + 0.5*(a_hist[[-2], :] +a_hist[[-1], :])*dt], axis=0)
+        return (r_hist, v_hist, a_hist)
+    def oabab(r_hist, v_hist, a_hist, gamma=1.0):
+        r_old = r_hist[-1, :]
+        v_old = v_hist[-1, :]
+        a_old = a_hist[-1, :]
+        # B
+        v_025 = v_old + a_old*dt/2
+        # A
+        r_050 = r_old + v_025*dt/2
+        # O
+        c = np.exp(-gamma*dt/m)
+        v_075 = (
+            c*v_025
+            + np.sqrt((1-c**2)*T_star*epsilon/m)
+            *np.random.normal(size=(num_particle, 2))
+        )
+        # A
+        r_new = r_050 + v_075 * dt/2
+        # B
+        a_new = force_lj(r_new[1, :])[0]/m
+        v_new = v_075 + a_new*dt/2
+        r_hist = np.concatenate([r_hist, np.expand_dims(r_new, 0)], axis=0)
+        a_hist = np.concatenate([a_hist, np.expand_dims(a_new, 0)],axis=0)
+        v_hist = np.concatenate([v_hist, np.expand_dims(v_new, 0)], axis=0)
         return (r_hist, v_hist, a_hist)
     def get_norm2_mat(position:np.ndarray):
         cat = np.concatenate
@@ -79,7 +112,7 @@ def lennard_jones_fluid(
     #print(f"potential for every particle:{u_mat_avery(r)}")
     #print(f"force:{f_func(r.reshape(1, num_particle, 2))}")
     if task=="a":
-        r = init_r_array()
+        r = init_r_array_by_rho_star(rho_star)
         r_hist = r.reshape(1, num_particle, 2)
         v_hist = init_v_array_by_t_star(T_star).reshape(1, num_particle, 2)
         a_hist =langevin_thermostat(r_hist[[-1], :], v_hist[[-1], :])/m
@@ -89,7 +122,9 @@ def lennard_jones_fluid(
         for step in range(10000):
             s = (r_hist, v_hist, a_hist) = velocity_verlet(r_hist, v_hist, a_hist, langevin_thermostat)
             if step%1==0:
-                print(epot:=u_mat_avery(get_norm2_mat(r_hist[-1, :])),ekin:=e_kin_avery(v_hist[-1, :]))
+                epot=u_mat_avery(get_norm2_mat(r_hist[-1, :]))
+                ekin=e_kin_avery(v_hist[-1, :])
+                #print(epot:=u_mat_avery(get_norm2_mat(r_hist[-1, :])),ekin:=e_kin_avery(v_hist[-1, :]))
                 E_pot.append(epot)
                 E_kin.append(ekin)
                 E_tot.append(epot+ekin)
